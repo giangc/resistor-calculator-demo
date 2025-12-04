@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, createContext, useContext } from 'react';
 
 // Types
 type ColorName = 'black' | 'brown' | 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'violet' | 'grey' | 'white' | 'gold' | 'silver';
@@ -26,6 +26,103 @@ interface FormattedResistance {
 
 type BandCount = 3 | 4 | 5 | 6;
 
+type Language = 'en' | 'vi';
+
+interface Translations {
+  title: string;
+  subtitle: string;
+  resistanceValue: string;
+  tolerance: string;
+  tempCoeff: string;
+  range: string;
+  bandConfiguration: string;
+  bandResistor: (count: number) => string;
+  firstDigit: string;
+  secondDigit: string;
+  thirdDigit: string;
+  multiplier: string;
+  footer: string;
+  colorNames: Record<ColorName, string>;
+}
+
+// Language Context
+interface LanguageContextType {
+  language: Language;
+  toggleLanguage: () => void;
+  t: Translations;
+}
+
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+
+const useLanguage = () => {
+  const context = useContext(LanguageContext);
+  if (!context) {
+    throw new Error('useLanguage must be used within LanguageProvider');
+  }
+  return context;
+};
+
+const translations: Record<Language, Translations> = {
+  en: {
+    title: 'Resistor Calculator',
+    subtitle: 'IEC 60062 Color Code Decoder',
+    resistanceValue: 'Resistance Value',
+    tolerance: 'Tolerance',
+    tempCoeff: 'Temp. Coeff.',
+    range: 'Range',
+    bandConfiguration: 'Band Configuration',
+    bandResistor: (count: number) => `${count} Band Resistor`,
+    firstDigit: '1st Digit',
+    secondDigit: '2nd Digit',
+    thirdDigit: '3rd Digit',
+    multiplier: 'Multiplier',
+    footer: 'Built with precision for engineers & hobbyists',
+    colorNames: {
+      black: 'Black',
+      brown: 'Brown',
+      red: 'Red',
+      orange: 'Orange',
+      yellow: 'Yellow',
+      green: 'Green',
+      blue: 'Blue',
+      violet: 'Violet',
+      grey: 'Grey',
+      white: 'White',
+      gold: 'Gold',
+      silver: 'Silver'
+    }
+  },
+  vi: {
+    title: 'Máy Tính Điện Trở',
+    subtitle: 'Bộ Giải Mã Màu IEC 60062',
+    resistanceValue: 'Giá Trị Điện Trở',
+    tolerance: 'Dung Sai',
+    tempCoeff: 'Hệ Số Nhiệt',
+    range: 'Khoảng',
+    bandConfiguration: 'Cấu Hình Vạch Màu',
+    bandResistor: (count: number) => `Điện Trở ${count} Vạch`,
+    firstDigit: 'Số Thứ 1 (Số Thực)',
+    secondDigit: 'Số Thứ 2 (Số Thực)',
+    thirdDigit: 'Số Thứ 3',
+    multiplier: 'Hệ Số Nhân',
+    footer: 'Được xây dựng chính xác cho kỹ sư & người đam mê',
+    colorNames: {
+      black: 'Đen',
+      brown: 'Nâu',
+      red: 'Đỏ',
+      orange: 'Cam',
+      yellow: 'Vàng',
+      green: 'Xanh Lá',
+      blue: 'Xanh Dương',
+      violet: 'Tím',
+      grey: 'Xám',
+      white: 'Trắng',
+      gold: 'Vàng Kim',
+      silver: 'Bạc'
+    }
+  }
+};
+
 // Constants
 const COLORS: Record<ColorName, ColorDefinition> = {
   black:  { hex: '#1a1a1a', digit: 0, multiplier: 1,         tolerance: null,  tempCoeff: 250 },
@@ -42,34 +139,34 @@ const COLORS: Record<ColorName, ColorDefinition> = {
   silver: { hex: 'silver',  digit: null, multiplier: 0.01,   tolerance: 10,    tempCoeff: null }
 };
 
-const BAND_CONFIGS: Record<BandCount, BandConfig[]> = {
+const getBandConfigs = (t: Translations): Record<BandCount, BandConfig[]> => ({
   3: [
-    { name: '1st Digit', type: 'digit', allowZero: false },
-    { name: '2nd Digit', type: 'digit', allowZero: true },
-    { name: 'Multiplier', type: 'multiplier' }
+    { name: t.firstDigit, type: 'digit', allowZero: false },
+    { name: t.secondDigit, type: 'digit', allowZero: true },
+    { name: t.multiplier, type: 'multiplier' }
   ],
   4: [
-    { name: '1st Digit', type: 'digit', allowZero: false },
-    { name: '2nd Digit', type: 'digit', allowZero: true },
-    { name: 'Multiplier', type: 'multiplier' },
-    { name: 'Tolerance', type: 'tolerance' }
+    { name: t.firstDigit, type: 'digit', allowZero: false },
+    { name: t.secondDigit, type: 'digit', allowZero: true },
+    { name: t.multiplier, type: 'multiplier' },
+    { name: t.tolerance, type: 'tolerance' }
   ],
   5: [
-    { name: '1st Digit', type: 'digit', allowZero: false },
-    { name: '2nd Digit', type: 'digit', allowZero: true },
-    { name: '3rd Digit', type: 'digit', allowZero: true },
-    { name: 'Multiplier', type: 'multiplier' },
-    { name: 'Tolerance', type: 'tolerance' }
+    { name: t.firstDigit, type: 'digit', allowZero: false },
+    { name: t.secondDigit, type: 'digit', allowZero: true },
+    { name: t.thirdDigit, type: 'digit', allowZero: true },
+    { name: t.multiplier, type: 'multiplier' },
+    { name: t.tolerance, type: 'tolerance' }
   ],
   6: [
-    { name: '1st Digit', type: 'digit', allowZero: false },
-    { name: '2nd Digit', type: 'digit', allowZero: true },
-    { name: '3rd Digit', type: 'digit', allowZero: true },
-    { name: 'Multiplier', type: 'multiplier' },
-    { name: 'Tolerance', type: 'tolerance' },
-    { name: 'Temp. Coeff.', type: 'tempCoeff' }
+    { name: t.firstDigit, type: 'digit', allowZero: false },
+    { name: t.secondDigit, type: 'digit', allowZero: true },
+    { name: t.thirdDigit, type: 'digit', allowZero: true },
+    { name: t.multiplier, type: 'multiplier' },
+    { name: t.tolerance, type: 'tolerance' },
+    { name: t.tempCoeff, type: 'tempCoeff' }
   ]
-};
+});
 
 const DEFAULT_SELECTIONS: Record<BandCount, ColorName[]> = {
   3: ['green', 'red', 'blue'],
@@ -133,8 +230,11 @@ interface ColorSwatchProps {
 }
 
 const ColorSwatch: React.FC<ColorSwatchProps> = ({ colorName, isSelected, isDisabled, onSelect }) => {
+  const { t } = useLanguage();
   const color = COLORS[colorName];
   const isMetallic = colorName === 'gold' || colorName === 'silver';
+  const displayName = t.colorNames[colorName];
+  const shortName = displayName.length > 6 ? displayName.slice(0, 3) : displayName.slice(0, 4);
   
   return (
     <label className={`color-option ${isDisabled ? 'disabled' : ''}`}>
@@ -149,8 +249,8 @@ const ColorSwatch: React.FC<ColorSwatchProps> = ({ colorName, isSelected, isDisa
           className={`swatch-color ${isMetallic ? colorName : ''}`}
           style={!isMetallic ? { backgroundColor: color.hex } : undefined}
         />
-        <span className="swatch-label">
-          {colorName.charAt(0).toUpperCase() + colorName.slice(1, 3)}
+        <span className="swatch-label" title={displayName}>
+          {shortName}
         </span>
       </div>
     </label>
@@ -224,6 +324,7 @@ interface ResultDisplayProps {
 }
 
 const ResultDisplay: React.FC<ResultDisplayProps> = ({ resistance, tolerance, tempCoeff }) => {
+  const { t } = useLanguage();
   const formatted = formatResistance(resistance);
   const minVal = resistance * (1 - tolerance / 100);
   const maxVal = resistance * (1 + tolerance / 100);
@@ -236,24 +337,24 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ resistance, tolerance, te
   
   return (
     <div className="result-card">
-      <div className="result-label">Resistance Value</div>
+      <div className="result-label">{t.resistanceValue}</div>
       <div className="result-value">
         <span>{formatted.value}</span>
         <span className="result-unit">{formatted.unit}</span>
       </div>
       <div className="result-tolerance">
         <div className="tolerance-item">
-          <span className="tolerance-label">Tolerance</span>
+          <span className="tolerance-label">{t.tolerance}</span>
           <span className="tolerance-value">±{tolerance}%</span>
         </div>
         {tempCoeff !== null && (
           <div className="tolerance-item">
-            <span className="tolerance-label">Temp. Coeff.</span>
+            <span className="tolerance-label">{t.tempCoeff}</span>
             <span className="tolerance-value">{tempCoeff} ppm/K</span>
           </div>
         )}
         <div className="tolerance-item">
-          <span className="tolerance-label">Range</span>
+          <span className="tolerance-label">{t.range}</span>
           <span className="tolerance-value">{rangeText}</span>
         </div>
       </div>
@@ -262,7 +363,8 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ resistance, tolerance, te
 };
 
 // Main Component
-const ResistorCalculator: React.FC = () => {
+const ResistorCalculatorContent: React.FC = () => {
+  const { language, toggleLanguage, t } = useLanguage();
   const [bandCount, setBandCount] = useState<BandCount>(4);
   const [selectedColors, setSelectedColors] = useState<ColorName[]>(DEFAULT_SELECTIONS[4]);
 
@@ -280,7 +382,7 @@ const ResistorCalculator: React.FC = () => {
   };
 
   const calculatedResult = useMemo(() => {
-    const config = BAND_CONFIGS[bandCount];
+    const config = getBandConfigs(t)[bandCount];
     let significantDigits = '';
     let multiplier = 1;
     let tolerance = 20;
@@ -310,20 +412,29 @@ const ResistorCalculator: React.FC = () => {
     const resistance = baseValue * multiplier;
 
     return { resistance, tolerance, tempCoeff };
-  }, [bandCount, selectedColors]);
+  }, [bandCount, selectedColors, t]);
 
-  const config = BAND_CONFIGS[bandCount];
+  const config = getBandConfigs(t)[bandCount];
 
   return (
     <div className="calculator-container">
       <style>{styles}</style>
       
       <header>
-        <div className="logo">
-          <div className="logo-icon">Ω</div>
-          <h1>Resistor Calculator</h1>
+        <div className="header-top">
+          <div className="logo">
+            <div className="logo-icon">Ω</div>
+            <h1>{t.title}</h1>
+          </div>
+          <button 
+            className="language-toggle" 
+            onClick={toggleLanguage}
+            aria-label="Toggle language"
+          >
+            {language === 'en' ? 'VI' : 'EN'}
+          </button>
         </div>
-        <p className="subtitle">IEC 60062 Color Code Decoder</p>
+        <p className="subtitle">{t.subtitle}</p>
       </header>
 
       <ResultDisplay
@@ -336,7 +447,7 @@ const ResistorCalculator: React.FC = () => {
 
       <div className="section">
         <div className="section-header">
-          <span className="section-title">Band Configuration</span>
+          <span className="section-title">{t.bandConfiguration}</span>
           <span className="info-badge">IEC 60062</span>
         </div>
         <div className="select-wrapper">
@@ -345,10 +456,10 @@ const ResistorCalculator: React.FC = () => {
             value={bandCount}
             onChange={(e) => handleBandCountChange(parseInt(e.target.value) as BandCount)}
           >
-            <option value={3}>3 Band Resistor</option>
-            <option value={4}>4 Band Resistor</option>
-            <option value={5}>5 Band Resistor</option>
-            <option value={6}>6 Band Resistor</option>
+            <option value={3}>{t.bandResistor(3)}</option>
+            <option value={4}>{t.bandResistor(4)}</option>
+            <option value={5}>{t.bandResistor(5)}</option>
+            <option value={6}>{t.bandResistor(6)}</option>
           </select>
         </div>
       </div>
@@ -366,9 +477,29 @@ const ResistorCalculator: React.FC = () => {
       </div>
 
       <footer>
-        <p>Built with precision for engineers & hobbyists</p>
+        <p>{t.footer}</p>
       </footer>
     </div>
+  );
+};
+
+const ResistorCalculator: React.FC = () => {
+  const [language, setLanguage] = useState<Language>('en');
+
+  const toggleLanguage = () => {
+    setLanguage(prev => prev === 'en' ? 'vi' : 'en');
+  };
+
+  const contextValue: LanguageContextType = {
+    language,
+    toggleLanguage,
+    t: translations[language]
+  };
+
+  return (
+    <LanguageContext.Provider value={contextValue}>
+      <ResistorCalculatorContent />
+    </LanguageContext.Provider>
   );
 };
 
@@ -430,12 +561,20 @@ const styles = `
     z-index: 1;
   }
 
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 8px;
+    position: relative;
+  }
+
   .logo {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 12px;
-    margin-bottom: 8px;
   }
 
   .logo-icon {
@@ -466,6 +605,35 @@ const styles = `
     font-size: 0.875rem;
     color: var(--text-muted);
     margin-top: 4px;
+  }
+
+  .language-toggle {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 8px 16px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--accent-cyan);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.5px;
+  }
+
+  .language-toggle:hover {
+    background: var(--bg-secondary);
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 12px rgba(6, 182, 212, 0.2);
+    transform: translateY(-50%) scale(1.05);
+  }
+
+  .language-toggle:active {
+    transform: translateY(-50%) scale(0.95);
   }
 
   .result-card {
@@ -717,6 +885,7 @@ const styles = `
     margin-bottom: 10px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    font-weight: 700;
   }
 
   .band-number {
